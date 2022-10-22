@@ -1,0 +1,32 @@
+steps:
+- name: python
+  entrypoint: pip
+  args: [ "install", "google-cloud-secret-manager", "--user" ]
+
+- name: python
+  entrypoint: python
+  args: [ "secret_manager.py", download , settings_toml, $PROJECT_NUMBER, 'src/settings.toml' ]
+  id: download_settings_toml
+
+
+- name: python
+  entrypoint: python
+  args: [ "secret_manager.py", download , cache_json, $PROJECT_NUMBER, 'src/cache.json' ]
+  id: download_cache_json
+
+
+
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args:
+  - gcloud
+  - functions
+  - deploy
+  - function-tesla-control
+  - --region=us-east4
+  - --service-account=service-account-tap@ensure-dev-zone.iam.gserviceaccount.com
+  - --entry-point=tesla_control
+  - --source=src
+  - --trigger-http
+  - --runtime=python39
+options:
+  logging: CLOUD_LOGGING_ONLY
