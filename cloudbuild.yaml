@@ -5,7 +5,7 @@ steps:
 
 - name: python
   entrypoint: python
-  args: [ "secret_manager.py", download , settings_toml, $PROJECT_NUMBER, 'src/settings.toml' ]
+  args: [ "secret_manager.py", download , 'tap_settings_files', $PROJECT_NUMBER, 'src/settings.toml' ]
   id: download_settings_toml
 
 
