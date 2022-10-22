@@ -11,7 +11,7 @@ steps:
 
 - name: python
   entrypoint: python
-  args: [ "secret_manager.py", download , cache_json, $PROJECT_NUMBER, 'src/cache.json' ]
+  args: [ "secret_manager.py", download , 'cache_json', $PROJECT_NUMBER, 'src/cache.json' ]
   id: download_cache_json
 
 
