@@ -27,6 +27,6 @@ steps:
   - --entry-point=tesla_control
   - --source=src
   - --trigger-http
-  - --runtime=python39
+  - --runtime=python310
 options:
   logging: CLOUD_LOGGING_ONLY
