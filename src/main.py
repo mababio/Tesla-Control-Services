@@ -60,7 +60,8 @@ def tesla_control(request):
     try:
         request_json = request.get_json()
         command = str(request_json['command'])
-        args = dict(request_json['args'])
+        if 'args' in request_json:
+            args = dict(request_json['args'])
     except Exception as e:
         logger.error('Tesla Control Cloud Function::::: Issue with function inputs :::::' + str(e))
         raise
