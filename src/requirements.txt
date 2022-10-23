@@ -3,4 +3,5 @@
 TeslaPy>=2.6.0
 google-cloud-scheduler>=2.7.1
 googleapis-common-protos>=1.56.4
-dynaconf==3.1.11
+dynaconf>=3.1.11
+google-cloud-logging>=3.2.2
