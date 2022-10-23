@@ -28,7 +28,7 @@ def set_lock_state(state):
 
 
 def set_temp(temp):
-    if isinstance(temp[0], float):
+    if isinstance(temp['temp'], float):
         with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
             vehicles = tesla.vehicle_list()
             vehicles[0].sync_wake_up()
@@ -36,7 +36,7 @@ def set_temp(temp):
             tesla_data_climate = professor.api('VEHICLE_DATA')['response']['climate_state']
             if not tesla_data_climate['is_climate_on']:
                 professor.command('CLIMATE_ON')
-            professor.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp, passenger_temp=temp)
+            professor.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp['temp'], passenger_temp=temp['temp'])
             return True
     else:
         logger.error("Function Control::::: Set Temp::: input invalid" + str(type(temp[0])))
