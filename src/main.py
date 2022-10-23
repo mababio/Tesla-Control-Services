@@ -56,6 +56,17 @@ def climate_off():
             return False
 
 
+def monday_kimone_climate():
+    with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
+        vehicles = tesla.vehicle_list()
+        vehicles[0].sync_wake_up()
+        vehicles[0].command('CLIMATE_ON')
+        vehicles[0].command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=22, passenger_temp=23)
+        vehicles[0].command('SET_CLIMATE_KEEPER_MODE', climate_keeper_mode=1)
+        vehicles[0].command('REMOTE_SEAT_HEATER_REQUEST', heater=1, level=3)
+    return True
+
+
 def tesla_control(request):
     try:
         request_json = request.get_json()
@@ -75,6 +86,8 @@ def tesla_control(request):
             return json.dumps({'executed': set_lock_state("lock")})
         case "UNLOCK_CAR":
             return json.dumps({'executed': set_lock_state("unlock")})
+        case "KIMONE_MONDAY_CLIMATE":
+            return json.dumps({'executed': monday_kimone_climate()})
         case _:
             logger.error("Tesla Control Cloud Function::::: faced error with http request")
             return json.dumps({'executed': False})
