@@ -28,5 +28,6 @@ steps:
   - --source=src
   - --trigger-http
   - --runtime=python310
+  - --allow-unauthenticated
 options:
   logging: CLOUD_LOGGING_ONLY
