@@ -1,15 +1,14 @@
-import math
 import json
-
-import requests
-
 from config import settings
 from logs import logger
 import teslapy
-from google.cloud import scheduler_v1
-from google.protobuf import field_mask_pb2
+from flask import Flask, request, Response
+import os
+
+app = Flask(__name__)
 
 
+@app.route('/set_lock_state/<state>')
 def set_lock_state(state):
     with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
         run_this = ''
@@ -20,9 +19,11 @@ def set_lock_state(state):
         vehicles = tesla.vehicle_list()
         vehicles[0].sync_wake_up()
         vehicles[0].command(run_this)
-        return True
+        js = json.dumps({'status': True})
+        return Response(js, status=200, mimetype='application/json')
 
 
+@app.route('/set_temp')
 def set_temp(temp):
     if isinstance(temp['temp'], float):
         with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
@@ -40,6 +41,7 @@ def set_temp(temp):
         return False
 
 
+@app.route('/climate_off')
 def climate_off():
     with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
         vehicles = tesla.vehicle_list()
@@ -53,7 +55,8 @@ def climate_off():
             return False
 
 
-def tesla_control(request):
+@app.route('/', methods=['GET','POST'])
+def tesla_control():
     try:
         request_json = request.get_json()
         logger.info("tesla_control:::::: {}".format(str(request_json)))
@@ -72,11 +75,11 @@ def tesla_control(request):
         case "LOCK_CAR":
             return json.dumps({'executed': set_lock_state("lock")})
         case "UNLOCK_CAR":
-            return json.dumps({'executed': set_lock_state("unlock")})
+            return set_lock_state("unlock")
         case _:
             logger.error("Tesla Control Cloud Function::::: faced error with http request")
             return json.dumps({'executed': False})
 
-#
-# if __name__ == "__main__":
-#     set_temp([23.0])
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8081)))
