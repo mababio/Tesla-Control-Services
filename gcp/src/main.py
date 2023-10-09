@@ -56,11 +56,10 @@ def climate_off():
             return False
 
 
-
 def tesla_control(request):
     try:
         request_json = request.get_json()
-        logger.error("tesla_control:::::: "+ str(request_json))
+        logger.info("tesla_control:::::: {}".format(str(request_json)))
         command = str(request_json['command'])
         if 'args' in request_json:
             args = dict(request_json['args'])
