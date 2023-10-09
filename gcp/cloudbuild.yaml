@@ -5,13 +5,13 @@ steps:
 
 - name: python
   entrypoint: python
-  args: [ "secret_manager.py", download , 'tap_settings_files', $PROJECT_NUMBER, 'src/settings.toml' ]
+  args: [ "gcp/secret_manager.py", download , 'tap_settings_files', $PROJECT_NUMBER, 'gcp/src/settings.toml' ]
   id: download_settings_toml
 
 
 - name: python
   entrypoint: python
-  args: [ "secret_manager.py", download , 'tesla_cred', $PROJECT_NUMBER, 'src/cache.json' ]
+  args: [ "gcp/secret_manager.py", download , 'tesla_cred', $PROJECT_NUMBER, 'gcp/src/cache.json' ]
   id: download_cache_json
 
 
@@ -25,7 +25,7 @@ steps:
   - --region=us-east4
   - --service-account=tesla-sc-get-location@tesla-automation-397321.iam.gserviceaccount.com
   - --entry-point=tesla_control
-  - --source=src
+  - --source=gcp/src
   - --trigger-http
   - --runtime=python310
   - --allow-unauthenticated
