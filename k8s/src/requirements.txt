@@ -2,8 +2,9 @@
 # package>=version
 TeslaPy>=2.6.0
 googleapis-common-protos>=1.56.4
-dynaconf>=3.1.11
-google-cloud-logging>=3.2.2
-google-cloud-secret-manager
 gunicorn==20.1.0
-Flask==3.0.0
+uvicorn
+fastapi
+retry
+redis
+unit-converter

@@ -1,12 +1,30 @@
 FROM python:3.10-slim
-ENV APP_HOME /app
-ENV PORT 8081
+
+######create appuser and directory for app#########
+RUN groupadd -g 999 appuser && \
+    useradd -m -r -u 999 -g appuser appuser
+USER appuser
+ENV APP_HOME  /home/appuser/app
+RUN mkdir /home/appuser/app
+RUN chown appuser:appuser /home/appuser/app
+###### Create appuser and directory for application#########
+
 WORKDIR $APP_HOME
-COPY src/* .
-COPY secret_manager.py .
-RUN pip install --no-cache-dir -r  requirements.txt
-COPY application_default_credentials.* ./
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
-RUN python secret_manager.py download settings.toml tap_settings_files tesla-automation-397321
-RUN python secret_manager.py download cache.json tesla_cred tesla-automation-397321
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+COPY src/* ./
+
+###### Create Python Virutal evironment ###########
+RUN python -m venv $APP_HOME
+RUN . $APP_HOME/bin/activate && pip install -r requirements.txt
+# make sure all messages always reach console
+ENV PYTHONUNBUFFERED=1
+###### Create Python Virutal evironment ###########
+
+####### Application specfic varaibles ##########
+ENV PORT 8081
+#################### For folks who are not creating kubernetes secrets ####################
+#ENV TESLA_USERNAME=<VALUE>
+#ENV CACHE_TESLA_JSON = <VALUE>
+#################### For folks who are not creating kubernetes secrets ####################
+####### Application specfic varaibles ##########
+
+CMD echo $CACHE_TESLA_JSON > cache.json; . $APP_HOME/bin/activate && exec python -m uvicorn --host 0.0.0.0 --port $PORT main:app --reload

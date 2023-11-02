@@ -1,85 +1,91 @@
+import os
+from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 import json
-from config import settings
+from unit_converter.converter import converts
 from logs import logger
 import teslapy
-from flask import Flask, request, Response
-import os
+import notification
 
-app = Flask(__name__)
+app = FastAPI()
+TESLA_USERNAME = os.environ.get("TESLA_USERNAME")
+
+app.add_middleware(
+    CORSMiddleware,
+    # allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.route('/set_lock_state/<state>')
+@app.get("/api/healthchecker")
+def root():
+    return {"message": "Welcome to FastAPI with MongoDB"}
+
+
+@app.get('/set_lock_state/{state}')
 def set_lock_state(state):
-    with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
-        run_this = ''
+    with teslapy.Tesla(TESLA_USERNAME) as tesla:
         if str(state).lower() == 'unlock':
             run_this = "UNLOCK"
         else:
             run_this = "LOCK"
         vehicles = tesla.vehicle_list()
-        vehicles[0].sync_wake_up()
-        vehicles[0].command(run_this)
+        timeout = 10
+        try:
+            vehicles[0].sync_wake_up()
+            vehicles[0].command(run_this)
+        except teslapy.VehicleError as e:
+            notification.send_push_notification(f"Timeout of {timeout} second for car to wake was reached:{e}")
+            raise teslapy.VehicleError
         js = json.dumps({'status': True})
-        return Response(js, status=200, mimetype='application/json')
+        return Response(js)
 
 
-@app.route('/set_temp')
+@app.get('/set_temp/{temp}')
 def set_temp(temp):
-    if isinstance(temp['temp'], float):
-        with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
+    if 60 <= int(temp) <= 80:
+        with teslapy.Tesla(TESLA_USERNAME) as tesla:
             vehicles = tesla.vehicle_list()
+            timeout = 10
+            formatted_str = f"{int(temp)}°F"
+            temp_in_c = converts(formatted_str, '°C')
+            try:
+                vehicles[0].sync_wake_up()
+                professor = vehicles[0]
+                tesla_data_climate = professor.api('VEHICLE_DATA')['response']['climate_state']
+            except teslapy.VehicleError as e:
+                notification.send_push_notification(f"Timeout of {timeout} second for car to wake was reached:{e}")
+                raise teslapy.VehicleError
+            if not tesla_data_climate['is_climate_on']:
+                professor.command('CLIMATE_ON')
+            professor.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp_in_c,
+                              passenger_temp=temp_in_c)
+            return True
+    else:
+        logger.error(f"Function Control::::: Set Temp::: input invalid input:{temp}")
+        notification.send_push_notification(f"temp input was outside the range. this was the temp provided:{temp}")
+        js = json.dumps({'error': f'temp provided is outside'})
+        return Response(js)
+
+
+@app.get('/climate_off')
+def climate_off():
+    with teslapy.Tesla(TESLA_USERNAME) as tesla:
+        vehicles = tesla.vehicle_list()
+        timeout = 10
+        try:
             vehicles[0].sync_wake_up()
             professor = vehicles[0]
             tesla_data_climate = professor.api('VEHICLE_DATA')['response']['climate_state']
-            if not tesla_data_climate['is_climate_on']:
-                professor.command('CLIMATE_ON')
-            professor.command('CHANGE_CLIMATE_TEMPERATURE_SETTING', driver_temp=temp['temp'],
-                              passenger_temp=temp['temp'])
-            return True
-    else:
-        logger.error("Function Control::::: Set Temp::: input invalid" + str(type(temp[0])))
-        return False
+        except teslapy.VehicleError as e:
+            notification.send_push_notification(f"Timeout of {timeout} second for car to wake was reached:{e}")
+            raise teslapy.VehicleError
 
-
-@app.route('/climate_off')
-def climate_off():
-    with teslapy.Tesla(settings['production']['teslapy']['email']) as tesla:
-        vehicles = tesla.vehicle_list()
-        vehicles[0].sync_wake_up()
-        professor = vehicles[0]
-        tesla_data_climate = professor.api('VEHICLE_DATA')['response']['climate_state']
         if tesla_data_climate['is_climate_on'] and not tesla_data_climate['climate_keeper_mode'] == 'dog':
             professor.command('CLIMATE_OFF')
             return True
         else:
+            notification.send_push_notification("Will not turn off Climate. It either is off or dog mode is on")
             return False
-
-
-@app.route('/', methods=['GET','POST'])
-def tesla_control():
-    try:
-        request_json = request.get_json()
-        logger.info("tesla_control:::::: {}".format(str(request_json)))
-        command = str(request_json['command'])
-        if 'args' in request_json:
-            args = dict(request_json['args'])
-    except Exception as e:
-        logger.error('Tesla Control Cloud Function::::: Issue with function inputs :::::' + str(e))
-        raise
-
-    match command:
-        case "TURN_OFF_CLIMATE":
-            return json.dumps({'executed': climate_off()})
-        case "SET_TEMP":
-            return json.dumps({'executed': set_temp(args)})
-        case "LOCK_CAR":
-            return json.dumps({'executed': set_lock_state("lock")})
-        case "UNLOCK_CAR":
-            return set_lock_state("unlock")
-        case _:
-            logger.error("Tesla Control Cloud Function::::: faced error with http request")
-            return json.dumps({'executed': False})
-
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8081)))
